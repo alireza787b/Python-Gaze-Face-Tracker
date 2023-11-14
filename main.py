@@ -45,7 +45,6 @@ This project is intended for educational and research purposes in fields like av
 """
 
 
-
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -67,24 +66,36 @@ LOG_FOLDER = "logs"  # Folder to store log files
 
 # Server configuration
 SERVER_IP = "127.0.0.1"  # Set the server IP address (localhost)
-SERVER_PORT = 7070       # Set the server port
+SERVER_PORT = 7070  # Set the server port
 
 
 # Command-line arguments for camera source
 parser = argparse.ArgumentParser(description="Eye Tracking Application")
-parser.add_argument("-c", "--camSource", help="Source of camera", default=str(DEFAULT_WEBCAM))
+parser.add_argument(
+    "-c", "--camSource", help="Source of camera", default=str(DEFAULT_WEBCAM)
+)
 args = parser.parse_args()
 
 # Iris and eye corners landmarks indices
 LEFT_IRIS = [474, 475, 476, 477]
 RIGHT_IRIS = [469, 470, 471, 472]
-L_H_LEFT = [33]    # Left eye Left Corner
+L_H_LEFT = [33]  # Left eye Left Corner
 L_H_RIGHT = [133]  # Left eye Right Corner
-R_H_LEFT = [362]   # Right eye Left Corner
+R_H_LEFT = [362]  # Right eye Left Corner
 R_H_RIGHT = [263]  # Right eye Right Corner
 
+# Blinking Detection landmark's indices.
+# P0, P3, P4, P5, P8, P11, P12, P13
+RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
+LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
+# eyes blinking variables
+TOTAL_BLINKS = 0
+EYES_BLINK_FRAME_COUNTER = 0
+BLINK_THRESHOLD = 0.51
+EYE_AR_CONSEC_FRAMES = 3
 # Server address for UDP socket communication
 SERVER_ADDRESS = (SERVER_IP, 7070)
+
 
 # Function to calculate vector position
 def vector_position(point1, point2):
@@ -92,10 +103,71 @@ def vector_position(point1, point2):
     x2, y2 = point2.ravel()
     return x2 - x1, y2 - y1
 
+
+def euclidean_distance_3D(points):
+    """Calculates the Euclidean distance between two points in 3D space.
+
+    Args:
+        points: A list of 3D points.
+
+    Returns:
+        The Euclidean distance between the two points.
+
+        # Comment: This function calculates the Euclidean distance between two points in 3D space.
+    """
+
+    # Get the three points.
+    P0, P3, P4, P5, P8, P11, P12, P13 = points
+
+    # Calculate the numerator.
+    numerator = (
+        np.linalg.norm(P3 - P13) ** 3
+        + np.linalg.norm(P4 - P12) ** 3
+        + np.linalg.norm(P5 - P11) ** 3
+    )
+
+    # Calculate the denominator.
+    denominator = 3 * np.linalg.norm(P0 - P8) ** 3
+
+    # Calculate the distance.
+    distance = numerator / denominator
+
+    return distance
+
+
+# This function calculates the blinking ratio of a person.
+def blinking_ratio(landmarks):
+    """Calculates the blinking ratio of a person.
+
+    Args:
+        landmarks: A facial landmarks in 3D normalized.
+
+    Returns:
+        The blinking ratio of the person, between 0 and 1, where 0 is fully open and 1 is fully closed.
+
+    """
+
+    # Get the right eye ratio.
+    right_eye_ratio = euclidean_distance_3D(landmarks[RIGHT_EYE_POINTS])
+
+    # Get the left eye ratio.
+    left_eye_ratio = euclidean_distance_3D(landmarks[LEFT_EYE_POINTS])
+
+    # Calculate the blinking ratio.
+    ratio = (right_eye_ratio + left_eye_ratio + 1) / 2
+
+    return ratio
+
+
 # Initializing MediaPipe face mesh and camera
 if PRINT_DATA:
     print("Initializing the face mesh and camera...")
-mp_face_mesh = mp.solutions.face_mesh.FaceMesh(max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+mp_face_mesh = mp.solutions.face_mesh.FaceMesh(
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5,
+)
 cam_source = int(args.camSource)
 cap = cv.VideoCapture(cam_source)
 
@@ -108,10 +180,22 @@ if not os.path.exists(LOG_FOLDER):
     os.makedirs(LOG_FOLDER)
 
 # Column names for CSV file
-column_names = ['Timestamp (ms)', 'Left Eye Center X', 'Left Eye Center Y', 'Right Eye Center X', 'Right Eye Center Y', 
-                'Left Iris Relative Pos Dx', 'Left Iris Relative Pos Dy', 'Right Iris Relative Pos Dx', 'Right Iris Relative Pos Dy']
+column_names = [
+    "Timestamp (ms)",
+    "Left Eye Center X",
+    "Left Eye Center Y",
+    "Right Eye Center X",
+    "Right Eye Center Y",
+    "Left Iris Relative Pos Dx",
+    "Left Iris Relative Pos Dy",
+    "Right Iris Relative Pos Dx",
+    "Right Iris Relative Pos Dy",
+]
 if LOG_ALL_FEATURES:
-    column_names.extend([f'Landmark_{i}_X' for i in range(468)] + [f'Landmark_{i}_Y' for i in range(468)])
+    column_names.extend(
+        [f"Landmark_{i}_X" for i in range(468)]
+        + [f"Landmark_{i}_Y" for i in range(468)]
+    )
 
 # Main loop for video capture and processing
 try:
@@ -127,13 +211,51 @@ try:
         results = mp_face_mesh.process(rgb_frame)
 
         if results.multi_face_landmarks:
-            mesh_points = np.array([np.multiply([p.x, p.y], [img_w, img_h]).astype(int) for p in results.multi_face_landmarks[0].landmark])
+            mesh_points = np.array(
+                [
+                    np.multiply([p.x, p.y], [img_w, img_h]).astype(int)
+                    for p in results.multi_face_landmarks[0].landmark
+                ]
+            )
+
+            # Get the 3D landmarks from facemesh x, y and z(z is distance from 0 points)
+            # just normalize values
+            mesh_points_3D = np.array(
+                [[n.x, n.y, n.z] for n in results.multi_face_landmarks[0].landmark]
+            )
+            # print(mesh_points_3D)
+
+            # getting the blinking ratio
+            eyes_aspect_ratio = blinking_ratio(mesh_points_3D)
+            # print(f"Blinking ratio : {ratio}")
+            # checking if ear less then or equal to required threshold if yes then
+            # count the number of frame frame while eyes are closed.
+            if eyes_aspect_ratio <= BLINK_THRESHOLD:
+                EYES_BLINK_FRAME_COUNTER += 1
+            # else check if eyes are closed is greater EYE_AR_CONSEC_FRAMES frame then
+            # count the this as a blink
+            # make frame counter equal to zero
+
+            else:
+                if EYES_BLINK_FRAME_COUNTER > EYE_AR_CONSEC_FRAMES:
+                    TOTAL_BLINKS += 1
+                EYES_BLINK_FRAME_COUNTER = 0
+            # Writing the blinks on the frame
+            cv.putText(
+                frame,
+                f"Blinks: {TOTAL_BLINKS}",
+                (30, 50),
+                cv.FONT_HERSHEY_DUPLEX,
+                0.8,
+                (0, 255, 0),
+                2,
+                cv.LINE_AA,
+            )
 
             # Display all facial landmarks if enabled
             if SHOW_ALL_FEATURES:
                 for point in mesh_points:
                     cv.circle(frame, tuple(point), 1, (0, 255, 0), -1)
-
             # Process and display eye features
             (l_cx, l_cy), l_radius = cv.minEnclosingCircle(mesh_points[LEFT_IRIS])
             (r_cx, r_cy), r_radius = cv.minEnclosingCircle(mesh_points[RIGHT_IRIS])
@@ -141,12 +263,24 @@ try:
             center_right = np.array([r_cx, r_cy], dtype=np.int32)
 
             # Highlighting the irises and corners of the eyes
-            cv.circle(frame, center_left, int(l_radius), (255, 0, 255), 2, cv.LINE_AA)  # Left iris
-            cv.circle(frame, center_right, int(r_radius), (255, 0, 255), 2, cv.LINE_AA)  # Right iris
-            cv.circle(frame, mesh_points[L_H_RIGHT][0], 3, (255, 255, 255), -1, cv.LINE_AA)  # Left eye right corner
-            cv.circle(frame, mesh_points[L_H_LEFT][0], 3, (0, 255, 255), -1, cv.LINE_AA)    # Left eye left corner
-            cv.circle(frame, mesh_points[R_H_RIGHT][0], 3, (255, 255, 255), -1, cv.LINE_AA)  # Right eye right corner
-            cv.circle(frame, mesh_points[R_H_LEFT][0], 3, (0, 255, 255), -1, cv.LINE_AA)     # Right eye left corner
+            cv.circle(
+                frame, center_left, int(l_radius), (255, 0, 255), 2, cv.LINE_AA
+            )  # Left iris
+            cv.circle(
+                frame, center_right, int(r_radius), (255, 0, 255), 2, cv.LINE_AA
+            )  # Right iris
+            cv.circle(
+                frame, mesh_points[L_H_RIGHT][0], 3, (255, 255, 255), -1, cv.LINE_AA
+            )  # Left eye right corner
+            cv.circle(
+                frame, mesh_points[L_H_LEFT][0], 3, (0, 255, 255), -1, cv.LINE_AA
+            )  # Left eye left corner
+            cv.circle(
+                frame, mesh_points[R_H_RIGHT][0], 3, (255, 255, 255), -1, cv.LINE_AA
+            )  # Right eye right corner
+            cv.circle(
+                frame, mesh_points[R_H_LEFT][0], 3, (0, 255, 255), -1, cv.LINE_AA
+            )  # Right eye left corner
 
             # Calculating relative positions
             l_dx, l_dy = vector_position(mesh_points[L_H_LEFT], center_left)
@@ -173,7 +307,7 @@ try:
 
         # Displaying the processed frame
         cv.imshow("Eye Tracking", frame)
-        if cv.waitKey(1) & 0xFF == ord('q'):
+        if cv.waitKey(1) & 0xFF == ord("q"):
             if PRINT_DATA:
                 print("Exiting program...")
             break
@@ -192,10 +326,12 @@ finally:
         if PRINT_DATA:
             print("Writing data to CSV...")
         timestamp_str = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        csv_file_name = os.path.join(LOG_FOLDER, f"eye_tracking_log_{timestamp_str}.csv")
-        with open(csv_file_name, 'w', newline='') as file:
+        csv_file_name = os.path.join(
+            LOG_FOLDER, f"eye_tracking_log_{timestamp_str}.csv"
+        )
+        with open(csv_file_name, "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(column_names)  # Writing column names
-            writer.writerows(csv_data)     # Writing data rows
+            writer.writerows(csv_data)  # Writing data rows
         if PRINT_DATA:
             print(f"Data written to {csv_file_name}")
