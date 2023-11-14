@@ -60,7 +60,7 @@
 - **DEFAULT_WEBCAM**: Default webcam source number. Can be overridden by command-line argument `-c`.
 - **PRINT_DATA**: Toggles printing of eye tracking data in the console.
 - **SHOW_ALL_FEATURES**: Controls whether all facial landmarks are displayed.
-- **LOG_DATA**: Enables logging of tracking data to a CSV file.
+- **LOG_DATA**: Enables logging of iris (gaze) tracking data to a CSV file.
 - **LOG_ALL_FEATURES**: When enabled, logs all detected facial landmarks to the CSV file.
 
 ---
