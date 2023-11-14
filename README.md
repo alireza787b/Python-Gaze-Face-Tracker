@@ -5,7 +5,9 @@
 
 ---
 <img width="311" alt="Screen_Shot_1402-08-23_at_13 01 35__1_-removebg-preview" src="https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/0e4b8068-9d80-4573-b5e7-2a2a6061c594" style="text-align:center">
-![image](https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/92decbfd-854e-41b5-84a7-23dc1707961f)
+
+![image](https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/ce20ac3a-6785-448e-85df-4d2dd5f22040)
+
 ## Description
 **Python-Gaze-Face-Tracker**  is a Python-based application designed for advanced real-time eye tracking, facial landmark detection, and head tracking, utilizing OpenCV and MediaPipe technology. Specializing in uncalibrated gaze tracking, this tool is an easy to use Python eye and facial landmark tracker. It excels in visualizing iris positions and offers robust logging capabilities for both eye and facial landmark data. Equipped with the ability to transmit this iris and gaze information over UDP sockets, Python-Gaze-Face-Tracker stands out for various applications, including aviation, human-computer interaction (HCI), and augmented reality (AR). Its unmatched efficiency in iris tracking and face tracking positions it as a go-to solution for researchers and developers seeking a comprehensive Python facial landmark and gaze tracking system. This tool not only facilitates detailed eye movement analysis but also supports head tracking, making it a comprehensive package for advanced gaze tracking and facial feature analysis in any interactive technology application.
 
