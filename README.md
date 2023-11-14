@@ -67,7 +67,7 @@
 
 ## Data Logging & Telemetry
 - **CSV Logging**: The application generates CSV files with tracking data including timestamps, eye positions, and optional facial landmarks. These files are stored in the `logs` folder.
-- **UDP Telemetry**: The application sends only iris position data through UDP sockets as defined by `SERVER_IP` and `SERVER_PORT`. The data is sent in the following order: [Left Eye Center X, Left Eye Center Y, Right Eye Center X, Right Eye Center Y].
+- **UDP Telemetry**: The application sends only iris position data through UDP sockets as defined by `SERVER_IP` and `SERVER_PORT`. The data is sent in the following order: [Left Eye Center X, Left Eye Center Y, Left Iris Relative Pos Dx, Left Iris Relative Pos Dy].
 
 ---
 
