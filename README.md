@@ -45,12 +45,12 @@
 
 4. **Run the Application:**
    ```
-   python eye_face_tracker.py
+   python main.py
    ```
 
    Optionally, specify the camera source:
    ```
-   python eye_face_tracker.py -c <camera_source_number>
+   python main.py -c <camera_source_number>
    ```
 
 ---
