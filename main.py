@@ -59,7 +59,7 @@ import os
 
 # User-configurable parameters
 PRINT_DATA = True  # Enable/disable data printing
-DEFAULT_WEBCAM = 1  # Default webcam number
+DEFAULT_WEBCAM = 0  # Default webcam number
 SHOW_ALL_FEATURES = True  # Show all facial landmarks if True
 LOG_DATA = True  # Enable logging to CSV
 LOG_ALL_FEATURES = False  # Log all facial landmarks if True
