@@ -82,6 +82,7 @@
 
 ## Acknowledgements
 This project was initially inspired by [Asadullah Dal's iris segmentation project](https://github.com/Asadullah-Dal17/iris-Segmentation-mediapipe-python).
+The blink detection feature is also contributed by Asadullah Dal.
 
 ---
 
