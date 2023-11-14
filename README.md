@@ -3,8 +3,6 @@
 
 ### Advanced Real-Time Eye and Facial Landmark Tracking System
 
-#### Author: [https://atlink](https://www.linkedin.com/in/alireza787b/)
-
 ---
 
 ## Description
