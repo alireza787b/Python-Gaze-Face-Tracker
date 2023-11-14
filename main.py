@@ -71,6 +71,12 @@ LOG_FOLDER = "logs"  # Folder to store log files
 SERVER_IP = "127.0.0.1"  # Set the server IP address (localhost)
 SERVER_PORT = 7070  # Set the server port
 
+# eyes blinking variables
+SHOW_BLINK_COUNT_ON_SCREEN = True  # Toggle to show the blink count on the video feed
+TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
+EYES_BLINK_FRAME_COUNTER = 0  # Counts the number of consecutive frames with a potential blink
+BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
+EYE_AR_CONSEC_FRAMES = 2  # Number of consecutive frames below the threshold to confirm a blink
 
 # Command-line arguments for camera source
 parser = argparse.ArgumentParser(description="Eye Tracking Application")
@@ -91,14 +97,7 @@ R_H_RIGHT = [263]  # Right eye Right Corner
 # P0, P3, P4, P5, P8, P11, P12, P13
 RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
 LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
-# eyes blinking variables
-SHOW_BLINK_COUNT_ON_SCREEN = True  # Toggle to show the blink count on the video feed
 
-# Blinking Detection landmarks and variables
-TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
-EYES_BLINK_FRAME_COUNTER = 0  # Counts the number of consecutive frames with a potential blink
-BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
-EYE_AR_CONSEC_FRAMES = 3  # Number of consecutive frames below the threshold to confirm a blink
 
 # Server address for UDP socket communication
 SERVER_ADDRESS = (SERVER_IP, 7070)
