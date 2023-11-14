@@ -9,7 +9,9 @@
 ![image](https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/ce20ac3a-6785-448e-85df-4d2dd5f22040)
 
 ## Description
-**Python-Gaze-Face-Tracker**  is a Python-based application designed for advanced real-time eye tracking, facial landmark detection, and head tracking, utilizing OpenCV and MediaPipe technology. Specializing in uncalibrated gaze tracking, this tool is an easy to use Python eye and facial landmark tracker. It excels in visualizing iris positions and offers robust logging capabilities for both eye and facial landmark data. Equipped with the ability to transmit this iris and gaze information over UDP sockets, Python-Gaze-Face-Tracker stands out for various applications, including aviation, human-computer interaction (HCI), and augmented reality (AR). Its unmatched efficiency in iris tracking and face tracking positions it as a go-to solution for researchers and developers seeking a comprehensive Python facial landmark and gaze tracking system. This tool not only facilitates detailed eye movement analysis but also supports head tracking, making it a comprehensive package for advanced gaze tracking and facial feature analysis in any interactive technology application.
+**Python-Gaze-Face-Tracker**  is a Python-based application designed for advanced real-time eye tracking, facial landmark detection, and head tracking, utilizing OpenCV and MediaPipe technology. Specializing in uncalibrated gaze tracking, this tool is an easy to use Python eye and facial landmark tracker. It excels in visualizing iris positions and offers robust logging capabilities for both eye and facial landmark data. Equipped with the ability to transmit this iris and gaze information over UDP sockets, Python-Gaze-Face-Tracker stands out for various applications, including aviation, human-computer interaction (HCI), and augmented reality (AR). The tool also includes a blink detection feature, contributing to detailed eye movement analysis and supporting head tracking. This makes it a comprehensive package for advanced gaze tracking and facial feature analysis in interactive technology applications.
+
+
 
 
 
@@ -20,7 +22,7 @@
 - **Facial Landmark Detection**: Detects and displays up to 468 facial landmarks.
 - **Data Logging**: Records tracking data to CSV files, including timestamps, eye positions, and optional facial landmark data. *Note: Enabling logging of all 468 facial landmarks can result in large log files.*
 - **Socket Communication**: Supports transmitting only iris tracking data via UDP sockets for integration with other systems or applications.
-
+- **Blink Detection**: Monitors and records blink frequency, enhancing eye movement analysis.
 ---
 
 ## Requirements
@@ -61,12 +63,14 @@
 ---
 
 ## Parameters
-- **SERVER_IP & SERVER_PORT**: Defines the IP address and port for UDP socket communication.
-- **DEFAULT_WEBCAM**: Default webcam source number. Can be overridden by command-line argument `-c`.
-- **PRINT_DATA**: Toggles printing of eye tracking data in the console.
-- **SHOW_ALL_FEATURES**: Controls whether all facial landmarks are displayed.
-- **LOG_DATA**: Enables logging of iris (gaze) tracking data to a CSV file.
-- **LOG_ALL_FEATURES**: When enabled, logs all detected facial landmarks to the CSV file.
+- **SERVER_IP & SERVER_PORT**: Configurable IP address and port for UDP socket communication. These parameters define where the eye-tracking data is sent via the network.
+- **DEFAULT_WEBCAM**: Specifies the default webcam source number. If a webcam number is provided as a command-line argument, that number is used; otherwise, the default value here is used.
+- **PRINT_DATA**: When set to True, the program prints eye-tracking data to the console. Set to False to disable printing.
+- **SHOW_ALL_FEATURES**: If True, the program shows all facial landmarks. Set to False to display only the eye positions.
+- **LOG_DATA**: Enables logging of eye tracking data to a CSV file when set to True.
+- **LOG_ALL_FEATURES**: When True, all 468 facial landmarks are logged in the CSV file.
+- **BLINK_THRESHOLD**: Threshold for the eye aspect ratio to trigger a blink.
+- **EYE_AR_CONSEC_FRAMES**: Number of consecutive frames below the threshold to confirm a blink.
 
 ---
 
