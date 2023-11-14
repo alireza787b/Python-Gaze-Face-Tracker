@@ -8,13 +8,14 @@ Date: November 2023
 Description:
 This Python-based application is designed for advanced eye tracking, utilizing OpenCV and MediaPipe. 
 It provides real-time iris tracking, logging of eye position data, and features socket communication for data transmission. 
+A recent addition to the application includes blink detection, further enhancing its capabilities. 
 The application is highly customizable, allowing users to control various parameters and logging options.
 
 Features:
 - Real-Time Eye Tracking: Utilizes webcam input for tracking and visualizing iris and eye corner positions.
-- Data Logging: Records tracking data in CSV format, including timestamps and positional data, with an option to log all 468 facial landmarks.
+- Data Logging: Records tracking data in CSV format, including timestamps, positional data, and blink counts, with an option to log all 468 facial landmarks.
 - Socket Communication: Transmits eye tracking data via UDP sockets, configurable through user-defined IP and port.
-- Customizable Settings: Includes multiple parameters for customizing tracking and logging behavior.
+- Blink Detection: Counts and logs the number of blinks detected during the tracking session.
 
 Requirements:
 - Python 3.x
@@ -23,8 +24,8 @@ Requirements:
 - Other Dependencies: math, socket, argparse, time, csv, datetime, os
 
 Inspiration:
-Initially inspired by Asadullah Dal's iris segmentation project: https://github.com/Asadullah-Dal17/iris-Segmentation-mediapipe-python
-
+Initially inspired by Asadullah Dal's iris segmentation project (https://github.com/Asadullah-Dal17/iris-Segmentation-mediapipe-python). 
+The blink detection feature is also contributed by Asadullah Dal (GitHub: Asadullah-Dal17).
 
 Parameters:
 - SERVER_IP & SERVER_PORT: Configurable IP address and port for UDP socket communication. 
@@ -35,7 +36,8 @@ Parameters:
 - SHOW_ALL_FEATURES: If True, the program shows all facial landmarks. Set to False to display only the eye positions.
 - LOG_DATA: Enables logging of eye tracking data to a CSV file when set to True.
 - LOG_ALL_FEATURES: When True, all 468 facial landmarks are logged in the CSV file.
-
+- BLINK_THRESHOLD: Threshold for the eye aspect ratio to trigger a blink.
+- EYE_AR_CONSEC_FRAMES: Number of consecutive frames below the threshold to confirm a blink.
 
 Usage:
 Run the script in a Python environment with the necessary dependencies installed. The script accepts command-line arguments for camera source configuration. The application displays a real-time video feed with eye tracking visualization. Press 'q' to quit the application and save the log data.
@@ -43,6 +45,7 @@ Run the script in a Python environment with the necessary dependencies installed
 Note:
 This project is intended for educational and research purposes in fields like aviation, human-computer interaction, and more.
 """
+
 
 
 import cv2 as cv
@@ -89,10 +92,14 @@ R_H_RIGHT = [263]  # Right eye Right Corner
 RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
 LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
 # eyes blinking variables
-TOTAL_BLINKS = 0
-EYES_BLINK_FRAME_COUNTER = 0
-BLINK_THRESHOLD = 0.51
-EYE_AR_CONSEC_FRAMES = 3
+SHOW_BLINK_COUNT_ON_SCREEN = True  # Toggle to show the blink count on the video feed
+
+# Blinking Detection landmarks and variables
+TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
+EYES_BLINK_FRAME_COUNTER = 0  # Counts the number of consecutive frames with a potential blink
+BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
+EYE_AR_CONSEC_FRAMES = 3  # Number of consecutive frames below the threshold to confirm a blink
+
 # Server address for UDP socket communication
 SERVER_ADDRESS = (SERVER_IP, 7070)
 
@@ -190,6 +197,7 @@ column_names = [
     "Left Iris Relative Pos Dy",
     "Right Iris Relative Pos Dx",
     "Right Iris Relative Pos Dy",
+    "Total Blink Count"
 ]
 if LOG_ALL_FEATURES:
     column_names.extend(
@@ -241,16 +249,9 @@ try:
                     TOTAL_BLINKS += 1
                 EYES_BLINK_FRAME_COUNTER = 0
             # Writing the blinks on the frame
-            cv.putText(
-                frame,
-                f"Blinks: {TOTAL_BLINKS}",
-                (30, 50),
-                cv.FONT_HERSHEY_DUPLEX,
-                0.8,
-                (0, 255, 0),
-                2,
-                cv.LINE_AA,
-            )
+            if SHOW_BLINK_COUNT_ON_SCREEN:
+                cv.putText(frame, f"Blinks: {TOTAL_BLINKS}", (30, 50), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
+
 
             # Display all facial landmarks if enabled
             if SHOW_ALL_FEATURES:
@@ -288,6 +289,7 @@ try:
 
             # Printing data if enabled
             if PRINT_DATA:
+                print(f"Total Blinks: {TOTAL_BLINKS}")
                 print(f"Left Eye Center X: {l_cx} Y: {l_cy}")
                 print(f"Right Eye Center X: {r_cx} Y: {r_cy}")
                 print(f"Left Iris Relative Pos Dx: {l_dx} Dy: {l_dy}")
@@ -296,7 +298,8 @@ try:
             # Logging data
             if LOG_DATA:
                 timestamp = int(time.time() * 1000)  # Current timestamp in milliseconds
-                log_entry = [timestamp, l_cx, l_cy, r_cx, r_cy, l_dx, l_dy, r_dx, r_dy]
+                log_entry = [timestamp, l_cx, l_cy, r_cx, r_cy, l_dx, l_dy, r_dx, r_dy, TOTAL_BLINKS]  # Include blink count in CSV
+                csv_data.append(log_entry)
                 if LOG_ALL_FEATURES:
                     log_entry.extend([p for point in mesh_points for p in point])
                 csv_data.append(log_entry)
