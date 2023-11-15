@@ -32,6 +32,13 @@
 - Other Python standard libraries: `math`, `socket`, `argparse`, `time`, `csv`, `datetime`, `os`
 
 ---
+## Tutorial Video
+🎥 **Watch the Setup and Usage Tutorial**: Discover how to install and use the Python-Gaze-Face-Tracker with our step-by-step video guide on YouTube: [Watch Tutorial](https://www.youtube.com/watch?v=UgC2GggTks0)
+
+This video tutorial will walk you through the installation process, demonstrate how to run the code, and show you the real-time tracking features in action.
+
+
+---
 
 ## Installation & Usage
 
@@ -59,6 +66,14 @@
    ```
    python main.py -c <camera_source_number>
    ```
+
+   5. **Open in VS Code:**
+   Optionally, open the project in VS Code:
+   ```
+   code .
+   ```
+
+
 
 ---
 
