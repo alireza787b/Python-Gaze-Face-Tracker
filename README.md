@@ -68,10 +68,11 @@ This video tutorial will walk you through the installation process, demonstrate 
    ```
 
 5. **Open in VS Code:**
-   Optionally, open the project in VS Code:
    ```
    code .
    ```
+      Optionally, open the project in VS Code:
+
 
 
 
