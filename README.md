@@ -67,7 +67,7 @@ This video tutorial will walk you through the installation process, demonstrate 
    python main.py -c <camera_source_number>
    ```
 
-   5. **Open in VS Code:**
+5. **Open in VS Code:**
    Optionally, open the project in VS Code:
    ```
    code .
