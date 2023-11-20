@@ -1,7 +1,7 @@
 import cv2
 import mediapipe as mp
-import sys
-import select
+import threading
+import queue
 
 # Parameters (easy to change)
 WEBCAM_NUMBER = 0  # Change this to use a different webcam
@@ -39,12 +39,18 @@ def validate_input(user_input):
         print(f"Invalid input. Please enter numbers between 0 and {MAX_LANDMARKS}, comma-separated.")
         return None
 
+# Function to handle user input in a separate thread.
+def input_thread(input_queue):
+    while True:
+        user_input = input()
+        input_queue.put(user_input)
+
 def main():
     print("MediaPipe Landmark Visualizer")
     print("Instructions:")
-    print("Enter landmark IDs in the console (comma-separated, e.g., 0,5,30,150,467).")
-    print("Press 'q' to quit the application.")
-    print("You can enter new landmark IDs anytime to update the visualization.")
+    print("1. Enter landmark IDs in the console (comma-separated, e.g., 1,5,30,150).")
+    print("2. Press 'q' to quit the application.")
+    print("3. You can enter new landmark IDs anytime to update the visualization.")
 
     # Open webcam.
     cap = cv2.VideoCapture(WEBCAM_NUMBER)
@@ -53,6 +59,11 @@ def main():
         return
 
     landmark_ids = []
+    input_queue = queue.Queue()
+
+    # Start the thread for handling user input.
+    threading.Thread(target=input_thread, args=(input_queue,), daemon=True).start()
+
     try:
         while True:
             success, image = cap.read()
@@ -77,14 +88,17 @@ def main():
             if cv2.waitKey(5) & 0xFF == ord('q'):
                 break
 
-            # Non-blocking input check
-            if select.select([sys.stdin], [], [], 0)[0]:
-                user_input = sys.stdin.readline().strip()
+            # Check for input from the input thread
+            try:
+                user_input = input_queue.get_nowait()
                 validated_ids = validate_input(user_input)
                 if validated_ids is not None:
                     landmark_ids = validated_ids
                     print("Selected Landmarks: ", ", ".join(map(str, landmark_ids)))
-                    print("To detect new landmarks, type IDs (comma-separated) and press enter.")
+                    print("To see new landmarks, type their IDs again (comma-separated) and press enter.")
+            except queue.Empty:
+                pass
+
     finally:
         cap.release()
         cv2.destroyAllWindows()

@@ -123,8 +123,11 @@ EYE_CORNERS_ROLL_DETECTION = [130, 359]  # Indices for the outer corners of the 
 # Pitch detection landmarks indices for assessing head movement up and down
 NOSE_TIP_PITCH_DETECTION = [4]  # Nose tip landmark for pitch detection reference
 UPPER_LIP_PITCH_DETECTION = [13, 14]  # Upper lip landmarks for pitch detection
-LOWER_LIP_PITCH_DETECTION = [0, 17]  # Lower lip landmarks for pitch detection
+LOWER_LIP_PITCH_DETECTION = [0, 17]  # Lower lip landmarks for pitch detectionccc
 
+
+MIN_DETECTION_CONFIDENCE = 0.8
+MIN_TRACKING_CONFIDENCE = 0.8
 
 # Initial calibration values for head pose
 initial_pitch = None
@@ -258,8 +261,8 @@ if PRINT_DATA:
 mp_face_mesh = mp.solutions.face_mesh.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5,
+    min_detection_confidence=MIN_DETECTION_CONFIDENCE,
+    min_tracking_confidence=MIN_TRACKING_CONFIDENCE,
 )
 cam_source = int(args.camSource)
 cap = cv.VideoCapture(cam_source)
