@@ -45,6 +45,7 @@ The blink detection feature is also contributed by Asadullah Dal (GitHub: Asadul
 Usage:
 -Run the script in a Python environment with the necessary dependencies installed. The script accepts command-line arguments for camera source configuration.
 - Press 'c' to recalibrate the head pose estimation to the current orientation.
+- Press 'r' to start/stop logging.
 - Press 'q' to exit the program.
 - Output is displayed in a window with live feed and annotations, and logged to a CSV file for further analysis.
 
@@ -165,6 +166,11 @@ calibrated = False
 
 # SERVER_ADDRESS: Tuple containing the SERVER_IP and SERVER_PORT for UDP communication.
 SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
+
+
+#If set to false it will wait for your command (hittig 'r') to start logging.
+IS_RECORDING = False  # Controls whether data is being logged
+
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------------------------------------
@@ -502,11 +508,13 @@ try:
 
         # Writing the on screen data on the frame
             if SHOW_ON_SCREEN_DATA:
-                cv.putText(frame, f"Blinks: {TOTAL_BLINKS}", (30, 50), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
+                if IS_RECORDING:
+                    cv.circle(frame, (30, 30), 10, (0, 0, 255), -1)  # Red circle at the top-left corner
+                cv.putText(frame, f"Blinks: {TOTAL_BLINKS}", (30, 80), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
                 if ENABLE_HEAD_POSE:
-                    cv.putText(frame, f"Pitch: {int(pitch)}", (30, 80), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
-                    cv.putText(frame, f"Yaw: {int(yaw)}", (30, 110), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
-                    cv.putText(frame, f"Roll: {int(roll)}", (30, 140), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
+                    cv.putText(frame, f"Pitch: {int(pitch)}", (30, 110), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
+                    cv.putText(frame, f"Yaw: {int(yaw)}", (30, 140), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
+                    cv.putText(frame, f"Roll: {int(roll)}", (30, 170), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
 
 
         
@@ -520,6 +528,16 @@ try:
             initial_pitch, initial_yaw, initial_roll = pitch, yaw, roll
             if PRINT_DATA:
                 print("Head pose recalibrated.")
+                
+        # Inside the main loop, handle the 'r' key press
+        if key == ord('r'):
+            
+            IS_RECORDING = not IS_RECORDING
+            if IS_RECORDING:
+                print("Recording started.")
+            else:
+                print("Recording paused.")
+
 
         # Exit on 'q' key press
         if key == ord('q'):
@@ -538,7 +556,7 @@ finally:
         print("Program exited successfully.")
 
     # Writing data to CSV file
-    if LOG_DATA:
+    if LOG_DATA and IS_RECORDING:
         if PRINT_DATA:
             print("Writing data to CSV...")
         timestamp_str = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
