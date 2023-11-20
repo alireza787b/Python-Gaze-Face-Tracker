@@ -1,21 +1,17 @@
-"""
-Face Landmark and Eye Tracker System
-GitHub: https://github.com/alireza787b/Python-Gaze-Face-Tracker
-Email: p30planets@gmail.com
-LinkedIn: https://www.linkedin.com/in/alireza787b
-Date: November 2023
 
-Description:
-This Python-based application is designed for advanced eye tracking, utilizing OpenCV and MediaPipe. 
-It provides real-time iris tracking, logging of eye position data, and features socket communication for data transmission. 
-A recent addition to the application includes blink detection, further enhancing its capabilities. 
-The application is highly customizable, allowing users to control various parameters and logging options.
+"""
+Eye Tracking and Head Pose Estimation
+
+This script is designed to perform real-time eye tracking and head pose estimation using a webcam feed. 
+It utilizes the MediaPipe library for facial landmark detection, which informs both eye tracking and 
+head pose calculations. The purpose is to track the user's eye movements and head orientation, 
+which can be applied in various domains such as HCI (Human-Computer Interaction), gaming, and accessibility tools.
 
 Features:
-- Real-Time Eye Tracking: Utilizes webcam input for tracking and visualizing iris and eye corner positions.
-- Data Logging: Records tracking data in CSV format, including timestamps, positional data, and blink counts, with an option to log all 468 facial landmarks.
-- Socket Communication: Transmits eye tracking data via UDP sockets, configurable through user-defined IP and port.
-- Blink Detection: Counts and logs the number of blinks detected during the tracking session.
+- Real-time eye tracking to count blinks and calculate the eye aspect ratio for each frame.
+- Head pose estimation to determine the orientation of the user's head in terms of pitch, yaw, and roll angles.
+- Calibration feature to set the initial head pose as the reference zero position.
+- Data logging for further analysis and debugging.
 
 Requirements:
 - Python 3.x
@@ -23,29 +19,41 @@ Requirements:
 - MediaPipe (mediapipe)
 - Other Dependencies: math, socket, argparse, time, csv, datetime, os
 
+Methodology:
+- The script uses the 468 facial landmarks provided by MediaPipe's FaceMesh model.
+- Eye tracking is achieved by calculating the Eye Aspect Ratio (EAR) for each eye and detecting blinks based on EAR thresholds.
+- Head pose is estimated using the solvePnP algorithm with a predefined 3D facial model and corresponding 2D landmarks detected from the camera feed.
+- Angles are normalized to intuitive ranges (pitch: [-90, 90], yaw and roll: [-180, 180]).
+
+Theory:
+- EAR is used as a simple yet effective metric for eye closure detection.
+- Head pose angles are derived using a perspective-n-point approach, which estimates an object's pose from its 2D image points and 3D model points.
+
+Parameters:
+You can change parameters as in face width, moving average window, webcam ID, terminal outputs, on screen data, loggin detail , etc. from the code 
+
+Author: Alireza Bagheri
+GitHub: https://github.com/alireza787b/Python-Gaze-Face-Tracker
+Email: p30planets@gmail.com
+LinkedIn: https://www.linkedin.com/in/alireza787b
+Date: November 2023
+
 Inspiration:
 Initially inspired by Asadullah Dal's iris segmentation project (https://github.com/Asadullah-Dal17/iris-Segmentation-mediapipe-python). 
 The blink detection feature is also contributed by Asadullah Dal (GitHub: Asadullah-Dal17).
 
-Parameters:
-- SERVER_IP & SERVER_PORT: Configurable IP address and port for UDP socket communication. 
-  These parameters define where the eye tracking data is sent via the network.
-- DEFAULT_WEBCAM: Specifies the default webcam source number. If a webcam number is provided as a command-line argument, 
-  that number is used; otherwise, the default value here is used.
-- PRINT_DATA: When set to True, the program prints eye tracking data to the console. Set to False to disable printing.
-- SHOW_ALL_FEATURES: If True, the program shows all facial landmarks. Set to False to display only the eye positions.
-- LOG_DATA: Enables logging of eye tracking data to a CSV file when set to True.
-- LOG_ALL_FEATURES: When True, all 468 facial landmarks are logged in the CSV file.
-- BLINK_THRESHOLD: Threshold for the eye aspect ratio to trigger a blink.
-- EYE_AR_CONSEC_FRAMES: Number of consecutive frames below the threshold to confirm a blink.
-
 Usage:
-Run the script in a Python environment with the necessary dependencies installed. The script accepts command-line arguments for camera source configuration. The application displays a real-time video feed with eye tracking visualization. Press 'q' to quit the application and save the log data.
+-Run the script in a Python environment with the necessary dependencies installed. The script accepts command-line arguments for camera source configuration.
+- Press 'c' to recalibrate the head pose estimation to the current orientation.
+- Press 'q' to exit the program.
+- Output is displayed in a window with live feed and annotations, and logged to a CSV file for further analysis.
+
+Ensure that all dependencies, especially MediaPipe, OpenCV, and NumPy, are installed before running the script.
 
 Note:
 This project is intended for educational and research purposes in fields like aviation, human-computer interaction, and more.
-"""
 
+"""
 
 
 import cv2 as cv
@@ -58,41 +66,108 @@ import time
 import csv
 from datetime import datetime
 import os
+from AngleBuffer import AngleBuffer
 
 
+#-----------------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------------
 
-# User-specific measurements (in mm)
-# USER_FACE_WIDTH: Measure the horizontal distance between the outer edges of the cheekbones in mm.
-USER_FACE_WIDTH = 140  # Example: 140mm, adjust based on actual measurement
+# Parameters Documentation
 
+## User-Specific Measurements
+# USER_FACE_WIDTH: The horizontal distance between the outer edges of the user's cheekbones in millimeters. 
+# This measurement is used to scale the 3D model points for head pose estimation.
+# Measure your face width and adjust the value accordingly.
+USER_FACE_WIDTH = 140  # [mm]
 
-#not used now
-# NOSE_TO_CAMERA_DISTANCE: Measure the distance from the tip of the nose to the camera lens in mm.
-NOSE_TO_CAMERA_DISTANCE = 600  # Example: 600mm, adjust based on actual distance
+## Camera Parameters (not currently used in calculations)
+# NOSE_TO_CAMERA_DISTANCE: The distance from the tip of the nose to the camera lens in millimeters.
+# Intended for future use where accurate physical distance measurements may be necessary.
+NOSE_TO_CAMERA_DISTANCE = 600  # [mm]
 
+## Configuration Parameters
+# PRINT_DATA: Enable or disable the printing of data to the console for debugging.
+PRINT_DATA = True
 
-# User-configurable parameters
-PRINT_DATA = True  # Enable/disable data printing
-DEFAULT_WEBCAM = 0  # Default webcam number
-SHOW_ALL_FEATURES = True  # Show all facial landmarks if True
-LOG_DATA = True  # Enable logging to CSV
-LOG_ALL_FEATURES = False  # Log all facial landmarks if True
+# DEFAULT_WEBCAM: Default camera source index. '0' usually refers to the built-in webcam.
+DEFAULT_WEBCAM = 0
 
-ENABLE_HEAD_POSE = True #Enable Head position and orientation estimator
+# SHOW_ALL_FEATURES: If True, display all facial landmarks on the video feed.
+SHOW_ALL_FEATURES = True
 
+# LOG_DATA: Enable or disable logging of data to a CSV file.
+LOG_DATA = True
 
-LOG_FOLDER = "logs"  # Folder to store log files
+# LOG_ALL_FEATURES: If True, log all facial landmarks to the CSV file.
+LOG_ALL_FEATURES = False
 
-# Server configuration
-SERVER_IP = "127.0.0.1"  # Set the server IP address (localhost)
-SERVER_PORT = 7070  # Set the server port
+# ENABLE_HEAD_POSE: Enable the head position and orientation estimator.
+ENABLE_HEAD_POSE = True
 
-# eyes blinking variables
-SHOW_ON_SCREEN_DATA = True  # Toggle to show the blink count on the video feed
-TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
-EYES_BLINK_FRAME_COUNTER = 0  # Counts the number of consecutive frames with a potential blink
-BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
-EYE_AR_CONSEC_FRAMES = 2  # Number of consecutive frames below the threshold to confirm a blink
+## Logging Configuration
+# LOG_FOLDER: Directory where log files will be stored.
+LOG_FOLDER = "logs"
+
+## Server Configuration
+# SERVER_IP: IP address of the server for sending data via UDP (default is localhost).
+SERVER_IP = "127.0.0.1"
+
+# SERVER_PORT: Port number for the server to listen on.
+SERVER_PORT = 7070
+
+## Blink Detection Parameters
+# SHOW_ON_SCREEN_DATA: If True, display blink count and head pose angles on the video feed.
+SHOW_ON_SCREEN_DATA = True
+
+# TOTAL_BLINKS: Counter for the total number of blinks detected.
+TOTAL_BLINKS = 0
+
+# EYES_BLINK_FRAME_COUNTER: Counter for consecutive frames with detected potential blinks.
+EYES_BLINK_FRAME_COUNTER = 0
+
+# BLINK_THRESHOLD: Eye aspect ratio threshold below which a blink is registered.
+BLINK_THRESHOLD = 0.51
+
+# EYE_AR_CONSEC_FRAMES: Number of consecutive frames below the threshold required to confirm a blink.
+EYE_AR_CONSEC_FRAMES = 2
+
+## Head Pose Estimation Landmark Indices
+# These indices correspond to the specific facial landmarks used for head pose estimation.
+LEFT_EYE_IRIS = [474, 475, 476, 477]
+RIGHT_EYE_IRIS = [469, 470, 471, 472]
+LEFT_EYE_OUTER_CORNER = [33]
+LEFT_EYE_INNER_CORNER = [133]
+RIGHT_EYE_OUTER_CORNER = [362]
+RIGHT_EYE_INNER_CORNER = [263]
+RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
+LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
+NOSE_TIP_INDEX = 4
+CHIN_INDEX = 152
+LEFT_EYE_LEFT_CORNER_INDEX = 33
+RIGHT_EYE_RIGHT_CORNER_INDEX = 263
+LEFT_MOUTH_CORNER_INDEX = 61
+RIGHT_MOUTH_CORNER_INDEX = 291
+
+## MediaPipe Model Confidence Parameters
+# These thresholds determine how confidently the model must detect or track to consider the results valid.
+MIN_DETECTION_CONFIDENCE = 0.8
+MIN_TRACKING_CONFIDENCE = 0.8
+
+## Angle Normalization Parameters
+# MOVING_AVERAGE_WINDOW: The number of frames over which to calculate the moving average for smoothing angles.
+MOVING_AVERAGE_WINDOW = 10
+
+# Initial Calibration Flags
+# initial_pitch, initial_yaw, initial_roll: Store the initial head pose angles for calibration purposes.
+# calibrated: A flag indicating whether the initial calibration has been performed.
+initial_pitch, initial_yaw, initial_roll = None, None, None
+calibrated = False
+
+# SERVER_ADDRESS: Tuple containing the SERVER_IP and SERVER_PORT for UDP communication.
+SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
+
+#-----------------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 # Command-line arguments for camera source
 parser = argparse.ArgumentParser(description="Eye Tracking Application")
@@ -101,41 +176,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# Iris and eye corners landmarks indices for iris detection and eye aspect ratio calculations
-LEFT_EYE_IRIS = [474, 475, 476, 477]  # Indices for the left eye iris
-RIGHT_EYE_IRIS = [469, 470, 471, 472]  # Indices for the right eye iris
-LEFT_EYE_OUTER_CORNER = [33]  # Left eye outer corner, for roll calculation
-LEFT_EYE_INNER_CORNER = [133]  # Left eye inner corner, for yaw calculation
-RIGHT_EYE_OUTER_CORNER = [362]  # Right eye outer corner, for roll calculation
-RIGHT_EYE_INNER_CORNER = [263]  # Right eye inner corner, for yaw calculation
-
-# Blinking Detection landmark's indices for eye blink detection
-RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]  # Right eye landmarks for blink detection
-LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]  # Left eye landmarks for blink detection
-
-# Yaw detection landmarks indices for assessing head rotation around the vertical axis
-LEFT_EYE_YAW_DETECTION = [23, 27, 130, 243]  # Left side landmarks around the eye for yaw detection
-RIGHT_EYE_YAW_DETECTION = [253, 257, 359, 463]  # Right side landmarks around the eye for yaw detection
-
-# Roll detection landmarks indices for assessing head tilt from side to side
-EYE_CORNERS_ROLL_DETECTION = [130, 359]  # Indices for the outer corners of the eyes for roll detection
-
-# Pitch detection landmarks indices for assessing head movement up and down
-NOSE_TIP_PITCH_DETECTION = [4]  # Nose tip landmark for pitch detection reference
-UPPER_LIP_PITCH_DETECTION = [13, 14]  # Upper lip landmarks for pitch detection
-LOWER_LIP_PITCH_DETECTION = [0, 17]  # Lower lip landmarks for pitch detectionccc
-
-
-MIN_DETECTION_CONFIDENCE = 0.8
-MIN_TRACKING_CONFIDENCE = 0.8
-
-# Initial calibration values for head pose
-initial_pitch = None
-initial_yaw = None
-initial_roll = None
-
-# Server address for UDP socket communication
-SERVER_ADDRESS = (SERVER_IP, 7070)
+#-----------------------------------------------------------------------------------------------------------------------------------
 
 
 # Function to calculate vector position
@@ -187,6 +228,7 @@ def estimate_head_pose(landmarks, image_size):
         (-150.0 * scale_factor, -150.0 * scale_factor, -125.0 * scale_factor),    # Left Mouth corner
         (150.0 * scale_factor, -150.0 * scale_factor, -125.0 * scale_factor)      # Right mouth corner
     ])
+    
 
     # Camera internals
     focal_length = image_size[1]
@@ -200,31 +242,62 @@ def estimate_head_pose(landmarks, image_size):
     # Assuming no lens distortion
     dist_coeffs = np.zeros((4,1))
 
-    # 2D image points from landmarks
+    # 2D image points from landmarks, using defined indices
     image_points = np.array([
-        landmarks[NOSE_TIP_PITCH_DETECTION[0]],     # Nose tip
-        landmarks[LOWER_LIP_PITCH_DETECTION[0]],    # Chin
-        landmarks[LEFT_EYE_OUTER_CORNER[0]],        # Left eye left corner
-        landmarks[RIGHT_EYE_OUTER_CORNER[0]],       # Right eye right corner
-        landmarks[UPPER_LIP_PITCH_DETECTION[0]],    # Left Mouth corner
-        landmarks[LOWER_LIP_PITCH_DETECTION[1]],    # Right mouth corner
+        landmarks[NOSE_TIP_INDEX],            # Nose tip
+        landmarks[CHIN_INDEX],                # Chin
+        landmarks[LEFT_EYE_LEFT_CORNER_INDEX],  # Left eye left corner
+        landmarks[RIGHT_EYE_RIGHT_CORNER_INDEX],  # Right eye right corner
+        landmarks[LEFT_MOUTH_CORNER_INDEX],      # Left mouth corner
+        landmarks[RIGHT_MOUTH_CORNER_INDEX]      # Right mouth corner
     ], dtype="double")
 
-    # Solve for pose
+
+        # Solve for pose
     (success, rotation_vector, translation_vector) = cv.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv.SOLVEPNP_ITERATIVE)
 
     # Convert rotation vector to rotation matrix
     rotation_matrix, _ = cv.Rodrigues(rotation_vector)
 
     # Combine rotation matrix and translation vector to form a 3x4 projection matrix
-    projection_matrix = np.hstack((rotation_matrix, translation_vector))
+    projection_matrix = np.hstack((rotation_matrix, translation_vector.reshape(-1, 1)))
 
     # Decompose the projection matrix to extract Euler angles
     _, _, _, _, _, _, euler_angles = cv.decomposeProjectionMatrix(projection_matrix)
-    pitch, yaw, roll = euler_angles.flatten()
+    pitch, yaw, roll = euler_angles.flatten()[:3]
 
+
+     # Normalize the pitch angle
+    pitch = normalize_pitch(pitch)
 
     return pitch, yaw, roll
+
+def normalize_pitch(pitch):
+    """
+    Normalize the pitch angle to be within the range of [-90, 90].
+
+    Args:
+        pitch (float): The raw pitch angle in degrees.
+
+    Returns:
+        float: The normalized pitch angle.
+    """
+    # Map the pitch angle to the range [-180, 180]
+    if pitch > 180:
+        pitch -= 360
+
+    # Invert the pitch angle for intuitive up/down movement
+    pitch = -pitch
+
+    # Ensure that the pitch is within the range of [-90, 90]
+    if pitch < -90:
+        pitch = -(180 + pitch)
+    elif pitch > 90:
+        pitch = 180 - pitch
+        
+    pitch = -pitch
+
+    return pitch
 
 
 # This function calculates the blinking ratio of a person.
@@ -300,14 +373,16 @@ if LOG_ALL_FEATURES:
 
 # Main loop for video capture and processing
 try:
-    
+    angle_buffer = AngleBuffer(size=MOVING_AVERAGE_WINDOW)  # Adjust size for smoothing
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
         # Flipping the frame for a mirror effect
-        frame = cv.flip(frame, 1)
+        # I think we better not flip to correspond with real world... need to make sure later...
+        #frame = cv.flip(frame, 1)
         rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         img_h, img_w = frame.shape[:2]
         results = mp_face_mesh.process(rgb_frame)
@@ -388,15 +463,23 @@ try:
                 # Check if head pose estimation is enabled
                 if ENABLE_HEAD_POSE:
                     pitch, yaw, roll = estimate_head_pose(mesh_points, (img_h, img_w))
-                    # Adjust with initial calibration
-                    #check if it is the first frame eg pitch
-                    if initial_pitch  == None:
-                        initial_pitch = pitch
-                        initial_yaw = yaw
-                        initial_roll = roll
-                    pitch -= initial_pitch
-                    yaw -= initial_yaw
-                    roll -= initial_roll
+                    angle_buffer.add([pitch, yaw, roll])
+                    pitch, yaw, roll = angle_buffer.get_average()
+
+                    # Set initial angles on first successful estimation or recalibrate
+                    if initial_pitch is None or (key == ord('c') and calibrated):
+                        initial_pitch, initial_yaw, initial_roll = pitch, yaw, roll
+                        calibrated = True
+                        if PRINT_DATA:
+                            print("Head pose recalibrated.")
+
+                    # Adjust angles based on initial calibration
+                    if calibrated:
+                        pitch -= initial_pitch
+                        yaw -= initial_yaw
+                        roll -= initial_roll
+                    
+                    
                     if PRINT_DATA:
                         print(f"Head Pose Angles: Pitch={pitch}, Yaw={yaw}, Roll={roll}")
             # Logging data
