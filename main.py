@@ -491,16 +491,17 @@ try:
                 face_looks = "Up"
             else:
                 face_looks = "Forward"
-            cv.putText(
-                frame,
-                f"Face Looking at {face_looks}",
-                (30, 80),
-                cv.FONT_HERSHEY_TRIPLEX,
-                0.8,
-                (255, 255, 255),
-                2,
-                cv.LINE_AA,
-            )
+            if SHOW_ON_SCREEN_DATA:
+                cv.putText(
+                    frame,
+                    f"Face Looking at {face_looks}",
+                    (img_w - 400, 80),
+                    cv.FONT_HERSHEY_TRIPLEX,
+                    0.8,
+                    (0, 255, 0),
+                    2,
+                    cv.LINE_AA,
+                )
             # Display the nose direction
             nose_3d_projection, jacobian = cv.projectPoints(
                 nose_3D_point, rot_vec, trans_vec, cam_matrix, dist_matrix
@@ -528,18 +529,7 @@ try:
                 if EYES_BLINK_FRAME_COUNTER > EYE_AR_CONSEC_FRAMES:
                     TOTAL_BLINKS += 1
                 EYES_BLINK_FRAME_COUNTER = 0
-            # Writing the blinks on the frame
-            if SHOW_BLINK_COUNT_ON_SCREEN:
-                cv.putText(
-                    frame,
-                    f"Blinks: {TOTAL_BLINKS}",
-                    (30, 50),
-                    cv.FONT_HERSHEY_DUPLEX,
-                    0.8,
-                    (0, 255, 0),
-                    2,
-                    cv.LINE_AA,
-                )
+            
             # Display all facial landmarks if enabled
             if SHOW_ALL_FEATURES:
                 for point in mesh_points:
@@ -622,7 +612,7 @@ try:
                 
                 # Append head pose data if enabled
                 if ENABLE_HEAD_POSE:
-                    log_entry.extend([pitch, yaw, roll]
+                    log_entry.extend([pitch, yaw, roll])
                 csv_data.append(log_entry)
                 if LOG_ALL_FEATURES:
                     log_entry.extend([p for point in mesh_points for p in point])
