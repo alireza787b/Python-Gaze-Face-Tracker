@@ -56,7 +56,6 @@ This project is intended for educational and research purposes in fields like av
 
 """
 
-
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -164,16 +163,34 @@ MOVING_AVERAGE_WINDOW = 10
 initial_pitch, initial_yaw, initial_roll = None, None, None
 calibrated = False
 
+# User-configurable parameters
+PRINT_DATA = True  # Enable/disable data printing
+DEFAULT_WEBCAM = 0  # Default webcam number
+SHOW_ALL_FEATURES = True  # Show all facial landmarks if True
+LOG_DATA = True  # Enable logging to CSV
+LOG_ALL_FEATURES = False  # Log all facial landmarks if True
+LOG_FOLDER = "logs"  # Folder to store log files
+
+# Server configuration
+SERVER_IP = "127.0.0.1"  # Set the server IP address (localhost)
+SERVER_PORT = 7070  # Set the server port
+
+# eyes blinking variables
+SHOW_BLINK_COUNT_ON_SCREEN = True  # Toggle to show the blink count on the video feed
+TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
+EYES_BLINK_FRAME_COUNTER = (
+    0  # Counts the number of consecutive frames with a potential blink
+)
+BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
+EYE_AR_CONSEC_FRAMES = (
+    2  # Number of consecutive frames below the threshold to confirm a blink
+)
 # SERVER_ADDRESS: Tuple containing the SERVER_IP and SERVER_PORT for UDP communication.
 SERVER_ADDRESS = (SERVER_IP, SERVER_PORT)
 
 
 #If set to false it will wait for your command (hittig 'r') to start logging.
 IS_RECORDING = False  # Controls whether data is being logged
-
-
-#-----------------------------------------------------------------------------------------------------------------------------------
-#-----------------------------------------------------------------------------------------------------------------------------------
 
 # Command-line arguments for camera source
 parser = argparse.ArgumentParser(description="Eye Tracking Application")
@@ -182,7 +199,24 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-#-----------------------------------------------------------------------------------------------------------------------------------
+# Iris and eye corners landmarks indices
+LEFT_IRIS = [474, 475, 476, 477]
+RIGHT_IRIS = [469, 470, 471, 472]
+L_H_LEFT = [33]  # Left eye Left Corner
+L_H_RIGHT = [133]  # Left eye Right Corner
+R_H_LEFT = [362]  # Right eye Left Corner
+R_H_RIGHT = [263]  # Right eye Right Corner
+
+# Blinking Detection landmark's indices.
+# P0, P3, P4, P5, P8, P11, P12, P13
+RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
+LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
+
+# Face Selected points indices for Head Pose Estimation
+_indices_pose = [1, 33, 61, 199, 263, 291]
+
+# Server address for UDP socket communication
+SERVER_ADDRESS = (SERVER_IP, 7070)
 
 
 # Function to calculate vector position
@@ -365,7 +399,7 @@ column_names = [
     "Left Iris Relative Pos Dy",
     "Right Iris Relative Pos Dx",
     "Right Iris Relative Pos Dy",
-    "Total Blink Count"
+    "Total Blink Count",
 ]
 # Add head pose columns if head pose estimation is enabled
 if ENABLE_HEAD_POSE:
@@ -406,8 +440,80 @@ try:
             mesh_points_3D = np.array(
                 [[n.x, n.y, n.z] for n in results.multi_face_landmarks[0].landmark]
             )
-            # print(mesh_points_3D)
+            # getting the head pose estimation 3d points
+            head_pose_points_3D = np.multiply(
+                mesh_points_3D[_indices_pose], [img_w, img_h, 1]
+            )
+            head_pose_points_2D = mesh_points[_indices_pose]
 
+            # collect nose three dimension and two dimension points
+            nose_3D_point = np.multiply(head_pose_points_3D[0], [1, 1, 3000])
+            nose_2D_point = head_pose_points_2D[0]
+
+            # create the camera matrix
+            focal_length = 1 * img_w
+
+            cam_matrix = np.array(
+                [[focal_length, 0, img_h / 2], [0, focal_length, img_w / 2], [0, 0, 1]]
+            )
+
+            # The distortion parameters
+            dist_matrix = np.zeros((4, 1), dtype=np.float64)
+
+            head_pose_points_2D = np.delete(head_pose_points_3D, 2, axis=1)
+            head_pose_points_3D = head_pose_points_3D.astype(np.float64)
+            head_pose_points_2D = head_pose_points_2D.astype(np.float64)
+            # Solve PnP
+            success, rot_vec, trans_vec = cv.solvePnP(
+                head_pose_points_3D, head_pose_points_2D, cam_matrix, dist_matrix
+            )
+            # Get rotational matrix
+            rotation_matrix, jac = cv.Rodrigues(rot_vec)
+
+            # Get angles
+            angles, mtxR, mtxQ, Qx, Qy, Qz = cv.RQDecomp3x3(rotation_matrix)
+
+            # Get the y rotation degree
+            angle_x = angles[0] * 360
+            angle_y = angles[1] * 360
+            z = angles[2] * 360
+
+            # if angle cross the values then
+            threshold_angle = 10
+            # See where the user's head tilting
+            if angle_y < -threshold_angle:
+                face_looks = "Left"
+            elif angle_y > threshold_angle:
+                face_looks = "Right"
+            elif angle_x < -threshold_angle:
+                face_looks = "Down"
+            elif angle_x > threshold_angle:
+                face_looks = "Up"
+            else:
+                face_looks = "Forward"
+            if SHOW_ON_SCREEN_DATA:
+                cv.putText(
+                    frame,
+                    f"Face Looking at {face_looks}",
+                    (img_w - 400, 80),
+                    cv.FONT_HERSHEY_TRIPLEX,
+                    0.8,
+                    (0, 255, 0),
+                    2,
+                    cv.LINE_AA,
+                )
+            # Display the nose direction
+            nose_3d_projection, jacobian = cv.projectPoints(
+                nose_3D_point, rot_vec, trans_vec, cam_matrix, dist_matrix
+            )
+
+            p1 = nose_2D_point
+            p2 = (
+                int(nose_2D_point[0] + angle_y * 10),
+                int(nose_2D_point[1] - angle_x * 10),
+            )
+
+            cv.line(frame, p1, p2, (255, 0, 255), 3)
             # getting the blinking ratio
             eyes_aspect_ratio = blinking_ratio(mesh_points_3D)
             # print(f"Blinking ratio : {ratio}")
@@ -424,7 +530,6 @@ try:
                     TOTAL_BLINKS += 1
                 EYES_BLINK_FRAME_COUNTER = 0
             
-
             # Display all facial landmarks if enabled
             if SHOW_ALL_FEATURES:
                 for point in mesh_points:
@@ -491,12 +596,23 @@ try:
             # Logging data
             if LOG_DATA:
                 timestamp = int(time.time() * 1000)  # Current timestamp in milliseconds
+                log_entry = [
+                    timestamp,
+                    l_cx,
+                    l_cy,
+                    r_cx,
+                    r_cy,
+                    l_dx,
+                    l_dy,
+                    r_dx,
+                    r_dy,
+                    TOTAL_BLINKS,
+                ]  # Include blink count in CSV
                 log_entry = [timestamp, l_cx, l_cy, r_cx, r_cy, l_dx, l_dy, r_dx, r_dy, TOTAL_BLINKS]  # Include blink count in CSV
                 
                 # Append head pose data if enabled
                 if ENABLE_HEAD_POSE:
                     log_entry.extend([pitch, yaw, roll])
-
                 csv_data.append(log_entry)
                 if LOG_ALL_FEATURES:
                     log_entry.extend([p for point in mesh_points for p in point])
