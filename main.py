@@ -47,7 +47,6 @@ This project is intended for educational and research purposes in fields like av
 """
 
 
-
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -74,9 +73,13 @@ SERVER_PORT = 7070  # Set the server port
 # eyes blinking variables
 SHOW_BLINK_COUNT_ON_SCREEN = True  # Toggle to show the blink count on the video feed
 TOTAL_BLINKS = 0  # Tracks the total number of blinks detected
-EYES_BLINK_FRAME_COUNTER = 0  # Counts the number of consecutive frames with a potential blink
+EYES_BLINK_FRAME_COUNTER = (
+    0  # Counts the number of consecutive frames with a potential blink
+)
 BLINK_THRESHOLD = 0.51  # Threshold for the eye aspect ratio to trigger a blink
-EYE_AR_CONSEC_FRAMES = 2  # Number of consecutive frames below the threshold to confirm a blink
+EYE_AR_CONSEC_FRAMES = (
+    2  # Number of consecutive frames below the threshold to confirm a blink
+)
 
 # Command-line arguments for camera source
 parser = argparse.ArgumentParser(description="Eye Tracking Application")
@@ -98,6 +101,8 @@ R_H_RIGHT = [263]  # Right eye Right Corner
 RIGHT_EYE_POINTS = [33, 160, 159, 158, 133, 153, 145, 144]
 LEFT_EYE_POINTS = [362, 385, 386, 387, 263, 373, 374, 380]
 
+# Face Selected points indices for Head Pose Estimation
+_indices_pose = [1, 33, 61, 199, 263, 291]
 
 # Server address for UDP socket communication
 SERVER_ADDRESS = (SERVER_IP, 7070)
@@ -196,7 +201,7 @@ column_names = [
     "Left Iris Relative Pos Dy",
     "Right Iris Relative Pos Dx",
     "Right Iris Relative Pos Dy",
-    "Total Blink Count"
+    "Total Blink Count",
 ]
 if LOG_ALL_FEATURES:
     column_names.extend(
@@ -230,8 +235,18 @@ try:
             mesh_points_3D = np.array(
                 [[n.x, n.y, n.z] for n in results.multi_face_landmarks[0].landmark]
             )
-            # print(mesh_points_3D)
+            # getting the head pose estimation 3d points
+            head_pose_points_3D = np.multiply(
+                mesh_points_3D[_indices_pose], [img_w, img_h, 1]
+            )
+            head_pose_points_2D = mesh_points[_indices_pose]
 
+            # collect nose three dimension and two dimension points
+            nose_3D_point = np.multiply(head_pose_points_3D[0], [1, 1, 3000])
+            nose_2D_point = head_pose_points_2D[0]
+
+            head_pose_points_3D = head_pose_points_3D.astype(np.float64)
+            head_pose_points_2D = head_pose_points_2D.astype(np.float64)
             # getting the blinking ratio
             eyes_aspect_ratio = blinking_ratio(mesh_points_3D)
             # print(f"Blinking ratio : {ratio}")
@@ -249,8 +264,16 @@ try:
                 EYES_BLINK_FRAME_COUNTER = 0
             # Writing the blinks on the frame
             if SHOW_BLINK_COUNT_ON_SCREEN:
-                cv.putText(frame, f"Blinks: {TOTAL_BLINKS}", (30, 50), cv.FONT_HERSHEY_DUPLEX, 0.8, (0, 255, 0), 2, cv.LINE_AA)
-
+                cv.putText(
+                    frame,
+                    f"Blinks: {TOTAL_BLINKS}",
+                    (30, 50),
+                    cv.FONT_HERSHEY_DUPLEX,
+                    0.8,
+                    (0, 255, 0),
+                    2,
+                    cv.LINE_AA,
+                )
 
             # Display all facial landmarks if enabled
             if SHOW_ALL_FEATURES:
@@ -297,7 +320,18 @@ try:
             # Logging data
             if LOG_DATA:
                 timestamp = int(time.time() * 1000)  # Current timestamp in milliseconds
-                log_entry = [timestamp, l_cx, l_cy, r_cx, r_cy, l_dx, l_dy, r_dx, r_dy, TOTAL_BLINKS]  # Include blink count in CSV
+                log_entry = [
+                    timestamp,
+                    l_cx,
+                    l_cy,
+                    r_cx,
+                    r_cy,
+                    l_dx,
+                    l_dy,
+                    r_dx,
+                    r_dy,
+                    TOTAL_BLINKS,
+                ]  # Include blink count in CSV
                 csv_data.append(log_entry)
                 if LOG_ALL_FEATURES:
                     log_entry.extend([p for point in mesh_points for p in point])
