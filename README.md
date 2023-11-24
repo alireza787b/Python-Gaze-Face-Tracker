@@ -23,6 +23,7 @@
 - **Blink Detection**: Monitors and records blink frequency, enhancing eye movement analysis.
 - **Real-Time Head Pose Estimation**: Accurately estimates the roll, pitch, and yaw of the user's head in real-time.
 - **Filtering and Smoothing**: Implements filtering and smoothing algorithms to ensure stable and accurate head orientation readings.
+- **Custom Real-Time Facial Landmark Visualization**: Utilize the `mediapipe_landmarks_test.py` script to visualize and track each of the MediaPipe facial landmark indices in real time. This feature is particularly useful for identifying the most relevant facial landmarks for your project and observing them directly in the video feed.
 
 ---
 
