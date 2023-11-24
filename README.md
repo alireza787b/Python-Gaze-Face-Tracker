@@ -1,7 +1,7 @@
 
 # Python-Gaze-Face-Tracker
 
-### Advanced Real-Time Eye and Facial Landmark Tracking System
+### Advanced Real-Time Eye, Facial Landmark, and Head Pose Tracking System
 
 ---
 <img src="https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/0e4b8068-9d80-4573-b5e7-2a2a6061c594" style="text-align:center">
@@ -9,9 +9,7 @@
 ![image](https://github.com/alireza787b/Python-Gaze-Face-Tracker/assets/30341941/ce20ac3a-6785-448e-85df-4d2dd5f22040)
 
 ## Description
-**Python-Gaze-Face-Tracker**  is a Python-based application designed for advanced real-time eye tracking, facial landmark detection, and head tracking, utilizing OpenCV and MediaPipe technology. Specializing in uncalibrated gaze tracking, this tool is an easy to use Python eye and facial landmark tracker. It excels in visualizing iris positions and offers robust logging capabilities for both eye and facial landmark data. Equipped with the ability to transmit this iris and gaze information over UDP sockets, Python-Gaze-Face-Tracker stands out for various applications, including aviation, human-computer interaction (HCI), and augmented reality (AR). The tool also includes a blink detection feature, contributing to detailed eye movement analysis and supporting head tracking. This makes it a comprehensive package for advanced gaze tracking and facial feature analysis in interactive technology applications.
-
-
+**Python-Gaze-Face-Tracker**  is a Python-based application designed for advanced real-time eye tracking, facial landmark detection, and head position (orientation) estimator, utilizing OpenCV and MediaPipe technology. Specializing in uncalibrated gaze tracking and head orientation analysis this tool is an easy-to-use Python eye and facial landmark tracker. It excels in visualizing iris positions and offers robust logging capabilities for both eye and facial landmark data. Equipped with the ability to transmit this iris and gaze information over UDP sockets, Python-Gaze-Face-Tracker stands out for various applications, including aviation, human-computer interaction (HCI), and augmented reality (AR). The tool also includes a blink detection feature, contributing to detailed eye movement analysis and supporting head tracking. This makes it a comprehensive package for advanced gaze tracking and facial feature analysis in interactive technology applications.
 
 
 
@@ -23,6 +21,9 @@
 - **Data Logging**: Records tracking data to CSV files, including timestamps, eye positions, and optional facial landmark data. *Note: Enabling logging of all 468 facial landmarks can result in large log files.*
 - **Socket Communication**: Supports transmitting only iris tracking data via UDP sockets for integration with other systems or applications.
 - **Blink Detection**: Monitors and records blink frequency, enhancing eye movement analysis.
+- **Real-Time Head Pose Estimation**: Accurately estimates the roll, pitch, and yaw of the user's head in real-time.
+- **Filtering and Smoothing**: Implements filtering and smoothing algorithms to ensure stable and accurate head orientation readings.
+
 ---
 
 ## Requirements
@@ -87,6 +88,7 @@ This video tutorial will walk you through the installation process, demonstrate 
 - **LOG_ALL_FEATURES**: When True, all 468 facial landmarks are logged in the CSV file.
 - **BLINK_THRESHOLD**: Threshold for the eye aspect ratio to trigger a blink.
 - **EYE_AR_CONSEC_FRAMES**: Number of consecutive frames below the threshold to confirm a blink.
+- **ENABLE_HEAD_POSE**: When True, enables the head pose estimation feature
 
 ---
 
