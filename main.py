@@ -1,6 +1,14 @@
 
 """
 Eye Tracking and Head Pose Estimation
+GitHub: https://github.com/alireza787b/Python-Gaze-Face-Tracker
+
+
+
+Author: Alireza Ghaderi
+LinkedIn: https://www.linkedin.com/in/alireza787b
+Date: November 2023
+
 
 This script is designed to perform real-time eye tracking and head pose estimation using a webcam feed. 
 It utilizes the MediaPipe library for facial landmark detection, which informs both eye tracking and 
@@ -32,11 +40,6 @@ Theory:
 Parameters:
 You can change parameters as in face width, moving average window, webcam ID, terminal outputs, on screen data, loggin detail , etc. from the code 
 
-Author: Alireza Bagheri
-GitHub: https://github.com/alireza787b/Python-Gaze-Face-Tracker
-Email: p30planets@gmail.com
-LinkedIn: https://www.linkedin.com/in/alireza787b
-Date: November 2023
 
 Inspiration:
 Initially inspired by Asadullah Dal's iris segmentation project (https://github.com/Asadullah-Dal17/iris-Segmentation-mediapipe-python). 
