@@ -247,6 +247,53 @@ try:
 
             head_pose_points_3D = head_pose_points_3D.astype(np.float64)
             head_pose_points_2D = head_pose_points_2D.astype(np.float64)
+
+            # create the camera matrix
+            focal_length = 1 * img_w
+
+            cam_matrix = np.array(
+                [[focal_length, 0, img_h / 2], [0, focal_length, img_w / 2], [0, 0, 1]]
+            )
+
+            # The distortion parameters
+            dist_matrix = np.zeros((4, 1), dtype=np.float64)
+
+            # Solve PnP
+            success, rot_vec, trans_vec = cv.solvePnP(
+                head_pose_points_3D, head_pose_points_2D, cam_matrix, dist_matrix
+            )
+            # Get rotational matrix
+            rotation_matrix, jac = cv.Rodrigues(rot_vec)
+
+            # Get angles
+            angles, mtxR, mtxQ, Qx, Qy, Qz = cv.RQDecomp3x3(rotation_matrix)
+
+            # Get the y rotation degree
+            x = angles[0] * 360
+            y = angles[1] * 360
+            z = angles[2] * 360
+
+            # See where the user's head tilting
+            if y < -10:
+                text = "Looking Left"
+            elif y > 10:
+                text = "Looking Right"
+            elif x < -10:
+                text = "Looking Down"
+            elif x > 10:
+                text = "Looking Up"
+            else:
+                text = "Forward"
+
+            # Display the nose direction
+            nose_3d_projection, jacobian = cv.projectPoints(
+                nose_3D_point, rot_vec, trans_vec, cam_matrix, dist_matrix
+            )
+
+            p1 = nose_2D_point
+            p2 = (int(nose_2D_point[0] + y * 10), int(nose_2D_point[1] - x * 10))
+
+            cv.line(frame, p1, p2, (255, 0, 255), 3)
             # getting the blinking ratio
             eyes_aspect_ratio = blinking_ratio(mesh_points_3D)
             # print(f"Blinking ratio : {ratio}")
